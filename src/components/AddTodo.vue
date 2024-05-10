@@ -31,41 +31,15 @@ function handleSubmit(e: FormDataEvent) {
         completed: false,
         timestamp : new Date() 
     })      
-    title.value = '' 
-    isSlowMode.value = true
+    // title.value = '' 
+    // isSlowMode.value = true
    
-    interval.value = setInterval(()=>{ 
-        timer.value = timer.value -1 ; 
-        localStorage.setItem('slowmode' , JSON.stringify(new Date())) ; 
-    },1000)
+    // interval.value = setInterval(()=>{ 
+    //     timer.value = timer.value -1 ; 
+    //     localStorage.setItem('slowmode' , JSON.stringify(new Date())) ; 
+    // },1000)
 }
 
-onMounted(()=>{
-    const lastSlowed = localStorage.getItem('slowmode') ? JSON.parse(localStorage.getItem('slowmode') as string) : false ; 
-    if(lastSlowed) { 
-        let timeElapsed  = dayjs(lastSlowed).diff()
-        console.log(timeElapsed)
-        if(timeElapsed<60) {
-            timer.value = timeElapsed ; 
-            interval.value = setInterval(()=>{ 
-            timer.value = timer.value -1 ; 
-            localStorage.setItem('slowmode' , JSON.stringify(new Date())) ;          
-            },1000) 
-            isSlowMode.value = true ;
-        }
-    }
-})
-
-onUpdated(()=>{ 
-    if(!interval.value) return ; 
-    if(timer.value ==0) {
-        clearInterval(interval.value) ; 
-        isSlowMode.value = false ; 
-        interval.value = null
-        timer.value = 60 ; 
-         
-    } 
-}) 
 
 </script>
 
