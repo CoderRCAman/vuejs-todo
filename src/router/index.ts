@@ -4,6 +4,7 @@ import Bookmark from "../views/Bookmark.vue";
 import { getAuth, User } from "firebase/auth";
 import { ref } from "vue";
 import Login from "../views/Login.vue";
+import Profile from "../views/Profile.vue";
 export const UserProfile = ref<User | null>(null);
 
 const routes = [
@@ -21,6 +22,11 @@ const routes = [
     path: "/login",
     name: "Login",
     component: Login,
+  },
+  {
+    path: "/profile",
+    name: "Profile",
+    component: Profile,
   },
 ];
 

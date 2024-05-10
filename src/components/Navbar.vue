@@ -3,7 +3,7 @@
         <RouterLink to='/'>
             <div class="text-xl font-semibold">Vue Js Todo app</div>
         </RouterLink>
-        <div>
+        <div class="flex items-center gap-2">
             <RouterLink to="/bookmarks">
                 <button class="border border-gray-200 p-1 rounded-md hover:bg-gray-50 relative">
                     <svg viewBox="0 0 24 24" class="w-6 h-6 fill-slate-400">
@@ -17,13 +17,21 @@
                         {{ Bookmarks.length }}
                     </span>
                 </button>
-            </RouterLink>
+            </RouterLink> 
+            <div v-if="UserProfile"> 
+             
+                <RouterLink to="/profile">
+                    <img :src="UserProfile?.photoURL" class="h-10 w-10 rounded-full"    />
+                </RouterLink>
+            </div>
         </div>
     </div>
 </template>
 <script setup>
 import { RouterLink } from 'vue-router';
 import { Bookmarks } from '../store/store'; 
+import { UserProfile } from '../router';
+ 
 </script>
 
 <style lang="scss" scoped></style>
