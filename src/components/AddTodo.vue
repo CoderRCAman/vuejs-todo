@@ -31,7 +31,7 @@ function handleSubmit(e: FormDataEvent) {
         completed: false,
         timestamp : new Date() 
     })      
-    // title.value = '' 
+    title.value = '' 
     // isSlowMode.value = true
    
     // interval.value = setInterval(()=>{ 
