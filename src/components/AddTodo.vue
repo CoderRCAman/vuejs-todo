@@ -11,7 +11,7 @@
 </template>
 
 <script setup lang="ts">
-import { onMounted, onUpdated, ref } from 'vue'
+import {  ref } from 'vue'
 import { addTodos } from '../store/store';
 import dayjs from 'dayjs';
 import relativeTime from 'dayjs/plugin/relativeTime' 
@@ -19,7 +19,7 @@ dayjs.extend(relativeTime)
 const title = ref('') 
 const timer = ref(60) ; 
 const isSlowMode = ref(false) ; 
-const interval = ref<any>(null) ; 
+// const interval = ref<any>(null) ; 
 // const { addTodo } = store;
 function handleSubmit(e: FormDataEvent) {
     e.preventDefault();
