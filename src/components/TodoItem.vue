@@ -1,12 +1,18 @@
 <template>
-    <div v-bind:class="['flex', 'border', 'rounded-md', 'p-2', 'justify-between', 'mt-3' , 'items-center', completed ? 'bg-emerald-50 border-emerald-300 text-emerald-600' : 'bg-white']">
-        <p>
-            {{ title }}
-        </p>
-        <div class="space-x-2">  
+    <div
+        v-bind:class="['flex', 'border', 'rounded-md', 'p-2', 'justify-between', 'mt-3', 'items-center', completed ? 'bg-emerald-50 border-emerald-300 text-emerald-600' : 'bg-white']">
+        <div clas="flex flex-col">
+            <p>
+                {{ title }}
+            </p>
+            <span class="text-xs font-semibold text-slate-400 border rounded-md p-1">by {{ userName }}</span>
+        </div>
+
+        <div class="space-x-2">
 
             <button v-if="!completed" v-on:click="handleCompleted" class="border border-emerald-200 p-1 rounded-md">
-                <svg xmlns="http://www.w3.org/2000/svg" class="w-6 h-6 stroke-emerald-400" fill="none" viewBox="0 0 24 24" stroke-width="1.5"  >
+                <svg xmlns="http://www.w3.org/2000/svg" class="w-6 h-6 stroke-emerald-400" fill="none"
+                    viewBox="0 0 24 24" stroke-width="1.5">
                     <path stroke-linecap="round" stroke-linejoin="round" d="m4.5 12.75 6 6 9-13.5" />
                 </svg>
             </button>
@@ -41,27 +47,31 @@ const props = defineProps({
         type: String,
         default: '100%',
     },
-    id : {
-        type:String
+    id: {
+        type: String
     },
-    completed:{
-        type:Boolean
+    completed: {
+        type: Boolean
+    },
+    userName: {
+        type: String,
+    default:'John Doe'
     }
-}) 
+})
 
-const { title, index,id , completed } = toRefs(props)
+const { title, index, id, completed } = toRefs(props)
 function handleRemoveTodo() {
-   if (!window.confirm('Are you sure?')) return;
+    if (!window.confirm('Are you sure?')) return;
     removeTodo(id.value)
 }
 function handleAddBookmark() {
     addToBookmark({
         title: title.value,
-        id: id.value , 
-        completed: completed.value ,
-        timestamp : new Date()
+        id: id.value,
+        completed: completed.value,
+        timestamp: new Date()
     })
-} 
+}
 
 function handleCompleted() {
     markAsCompleted(id.value)

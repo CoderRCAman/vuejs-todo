@@ -4,6 +4,8 @@ type TodosType = {
   id: string;
   completed: boolean;
   timestamp?: Date;
+  userName: string;
+  user_id: string;
 };
 export type BookMark = {
   title: string;
@@ -15,6 +17,7 @@ import {
   collection,
   deleteDoc,
   doc,
+  getDoc,
   onSnapshot,
   orderBy,
   query,
@@ -66,6 +69,7 @@ import {
 
 import { ref } from "vue";
 import { db } from "../firebase/firebase";
+import { UserProfile } from "../router";
 const Todos = ref<TodosType[]>([]);
 const CompletedTodos = ref<TodosType[]>([]);
 const Bookmarks = ref<BookMark[]>([]);
@@ -79,6 +83,8 @@ unsubscribe.value = onSnapshot(q, (querySnapshot) => {
       title: doc.data().title,
       id: doc.data().id,
       completed: doc.data().completed,
+      userName: doc.data().userName,
+      user_id: doc.data().user_id,
     });
   });
   Todos.value = todos.filter((todo) => !todo.completed);
@@ -98,6 +104,7 @@ window.onbeforeunload = () => {
 };
 
 async function addTodos(todo: TodosType) {
+  console.log(todo);
   try {
     add_loading.value = true;
     const docRef = doc(db, "todos", todo.id.toString());
@@ -110,6 +117,11 @@ async function addTodos(todo: TodosType) {
 }
 async function removeTodo(id: string) {
   try {
+    const ref = doc(db, "todos", id);
+    const currTodo = await getDoc(ref);
+    if (!currTodo.exists()) return;
+    if (currTodo.data().user_id !== UserProfile.value?.uid)
+      return alert("You cannot delete this todo!");
     await deleteDoc(doc(db, "todos", id));
     let bookmarks = localStorage.getItem("bookmarks")
       ? JSON.parse(localStorage.getItem("bookmarks") as string)
@@ -127,12 +139,17 @@ async function addToBookmark(bookmark: BookMark) {
   localStorage.setItem("bookmarks", JSON.stringify(Bookmarks.value));
 }
 
-async function removeBookmark(id: String) {
+async function removeBookmark(id: string) {
   Bookmarks.value = Bookmarks.value.filter((b) => b.id != id);
   localStorage.setItem("bookmarks", JSON.stringify(Bookmarks.value));
 }
 
 async function markAsCompleted(id: string) {
+  const ref = doc(db, "todos", id);
+  const currTodo = await getDoc(ref);
+  if (!currTodo.exists()) return;
+  if (currTodo.data().user_id !== UserProfile.value?.uid)
+    return alert("You cannot Mark this todo!");
   setDoc(doc(db, "todos", id), { completed: true }, { merge: true });
 }
 
