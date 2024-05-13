@@ -10,7 +10,8 @@
 
         <div class="space-x-2">
 
-            <button v-if="!completed" v-on:click="handleCompleted" class="border border-emerald-200 p-1 rounded-md">
+            <button v-if="!completed && userId == UserProfile.uid" v-on:click="handleCompleted"
+                class="border border-emerald-200 p-1 rounded-md">
                 <svg xmlns="http://www.w3.org/2000/svg" class="w-6 h-6 stroke-emerald-400" fill="none"
                     viewBox="0 0 24 24" stroke-width="1.5">
                     <path stroke-linecap="round" stroke-linejoin="round" d="m4.5 12.75 6 6 9-13.5" />
@@ -24,7 +25,7 @@
                         clipRule="evenodd" />
                 </svg>
             </button>
-            <button v-on:click="handleRemoveTodo" class="border p-1 rounded-md border-red-400">
+            <button v-if="userId == UserProfile.uid" v-on:click="handleRemoveTodo" class="border p-1 rounded-md border-red-400">
                 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor"
                     class="w-6 h-6 fill-red-400">
                     <path fill-rule="evenodd"
@@ -40,6 +41,7 @@
 <script setup>
 import { toRefs } from 'vue'
 import { addToBookmark, markAsCompleted, removeTodo } from '../store/store';
+import { UserProfile } from '../router';
 
 // import { store } from '../store/store';
 const props = defineProps({
@@ -55,7 +57,11 @@ const props = defineProps({
     },
     userName: {
         type: String,
-    default:'John Doe'
+        default: 'John Doe'
+    },
+    userId: {
+        type: String,
+        default: ''
     }
 })
 

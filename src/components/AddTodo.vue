@@ -1,7 +1,7 @@
 <template>
     <div>
         <form v-on:submit="handleSubmit" class="flex gap-2 mb-5">
-            <input :disabled="isSlowMode == true" v-model="title"
+            <input placeholder="Add Todo..." :disabled="isSlowMode == true" v-model="title"
                 class="outline-none border rounded-md py-2 px-1 w-full" />
             <button v-if="isSlowMode == true" disabled
                 class="border px-4 opacity-45 rounded-md text-amber-400 border-amber-400 hover:bg-amber-50 flex items-center gap-2">

@@ -5,6 +5,7 @@ import { getAuth, User } from "firebase/auth";
 import { ref } from "vue";
 import Login from "../views/Login.vue";
 import Profile from "../views/Profile.vue";
+import Explore from "../views/Explore.vue";
 export const UserProfile = ref<User | null>(null);
 
 const routes = [
@@ -28,6 +29,11 @@ const routes = [
     name: "Profile",
     component: Profile,
   },
+  {
+    path: "/explore/map",
+    name: "ExploreMap",
+    component: Explore,
+  },
 ];
 
 const router = createRouter({
@@ -38,7 +44,6 @@ const router = createRouter({
 const auth = getAuth();
 router.beforeEach(async (to, _, next) => {
   let user = await getCurrentUser();
-  console.log(user)
   UserProfile.value = user;
   if (to.name !== "Login" && !user) next({ name: "Login" });
   else if (to.name == "Login" && user) next({ name: "Home" });
