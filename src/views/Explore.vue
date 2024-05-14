@@ -18,7 +18,8 @@
                 </div>
 
                 <div v-if="!showAdd && !showEdit" v-for="(polygon, index) in polygons" :key="index">
-                    <div class="flex items-center justify-between p-1 rounded-md  border">
+                    <div
+                        v-bind:class="(selectedPolygon?.id == polygon?.id ? 'bg-gray-100' : '') + ' flex items-center justify-between p-1 rounded-md  border'">
                         <h1 class="capitalize">{{ polygon.name }}</h1>
                         <div class="flex items-center gap-1">
                             <button v-on:click="selectedPolygon = polygon;"
@@ -73,6 +74,7 @@ import { collection, deleteDoc, doc, getDocs, onSnapshot, orderBy, query, setDoc
 import { db } from "../firebase/firebase";
 import { myLatLong } from "../store/store";
 import EditLocation from "../components/EditLocation.vue";
+import { isSameCordinatesArray } from "../utils";
 const showAdd = ref(false);
 const showEdit = ref(false);
 const currentZoomLevel = ref(8);
@@ -94,11 +96,7 @@ loader.importLibrary("maps").then(async () => {
         zoom: 8,
         mapId: 'b7a9841aa08c5884+'
     });
-    let infoWindow = new google.maps.InfoWindow({
-        content: "Click the map to get Lat/Lng!",
-        position: myLatLong.value,
-    });
-    infoWindow.open(map);
+
     polygon = new google.maps.Polygon({
         strokeColor: "#FF0000",
         strokeOpacity: 0.8,
@@ -109,15 +107,6 @@ loader.importLibrary("maps").then(async () => {
     });
     polygon.setMap(map);
     map.addListener("click", (mapsMouseEvent: any) => {
-        infoWindow.close();
-
-        infoWindow = new google.maps.InfoWindow({
-            position: mapsMouseEvent.latLng,
-        });
-        infoWindow.setContent(
-            JSON.stringify(mapsMouseEvent.latLng.toJSON(), null, 2)
-        );
-        infoWindow.open(map);
         if (showAdd.value) {
             //which means we can now plot the polygon 
             handleDisplayPolygon(mapsMouseEvent)
@@ -217,8 +206,6 @@ watch(myLatLong, () => {
 })
 
 
-
-
 watch(selectedPolygon, () => {
     if (showEdit.value) {
         handleShowEditPolygon(selectedPolygon.value)
@@ -292,7 +279,16 @@ async function handleSavePolygon(polygon_name: string) {
 async function handleDeletePolygin(id: string) {
     if (!window.confirm('Are you sure?')) return;
     try {
+        const toDeletePolygon: any[] = polygons.value.find((p: any) => p.id === id)?.coordinates
+        const currentPoints = polygon?.getPath()?.getArray().map(p => ({
+            lat: p.lat(),
+            lng: p.lng()
+        }))
+
         await deleteDoc(doc(db, 'polygons', id))
+        if (currentPoints && isSameCordinatesArray(toDeletePolygon, currentPoints)) {
+            polygon.setPath([]);
+        }
         alert('Polygon deleted successfully!');
 
     } catch (error) {
