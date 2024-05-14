@@ -75,6 +75,13 @@ const CompletedTodos = ref<TodosType[]>([]);
 const Bookmarks = ref<BookMark[]>([]);
 const add_loading = ref(false);
 const unsubscribe = ref<any>();
+const myLatLong = ref<{
+  lat: number;
+  lng: number;
+}>({
+  lat: -34.397,
+  lng: 150.644,
+});
 const q = query(collection(db, "todos"), orderBy("timestamp", "desc"));
 unsubscribe.value = onSnapshot(q, (querySnapshot) => {
   const todos: TodosType[] = [];
@@ -104,7 +111,6 @@ window.onbeforeunload = () => {
 };
 
 async function addTodos(todo: TodosType) {
-  console.log(todo);
   try {
     add_loading.value = true;
     const docRef = doc(db, "todos", todo.id.toString());
@@ -162,4 +168,5 @@ export {
   addToBookmark,
   removeBookmark,
   markAsCompleted,
+  myLatLong,
 };

@@ -5,13 +5,42 @@
             <div class="min-h-92 p-2 text-sm md:w-80 border rounded-md space-y-2">
                 <h1 class="font-semibold text-slate-700">Map polygons</h1>
                 <div v-if="!showAdd">
-                    <button v-on:click="showAdd = !showAdd" class="border rounded-md px-7 w-full py-2 font-semibold text-emerald-500 border-emerald-500
+                    <button v-on:click="toggleAddPolygon" class="border rounded-md px-7 w-full py-2 font-semibold text-emerald-500 border-emerald-500
                 hover:bg-emerald-500 hover:text-white transition-colors duration-300 ease-in
                 ">Add a new location</button>
                 </div>
                 <div v-if="showAdd">
-                    <AddNewLocation :handle-cancel="handleCancel" />
+                    <AddNewLocation :handle-cancel="handleCancel" :handle-save-polygon="handleSavePolygon" />
                 </div>
+
+                <div v-if="!showAdd" v-for="(polygon, index) in polygons" :key="index">
+                    <div class="flex items-center justify-between p-1 rounded-md  border">
+                        <h1>{{ polygon.name }}</h1>
+                        <div class="flex items-center gap-1">
+                            <button v-on:click="selectedPolygon = polygon;"
+                                class="border px-1 py-1 rounded-md text-sky-500 border-sky-500 hover:bg-sky-500 hover:text-white">
+                                <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24"
+                                    stroke-width="1.5" stroke="currentColor" class="w-4 h-4">
+                                    <path stroke-linecap="round" stroke-linejoin="round"
+                                        d="M2.036 12.322a1.012 1.012 0 0 1 0-.639C3.423 7.51 7.36 4.5 12 4.5c4.638 0 8.573 3.007 9.963 7.178.07.207.07.431 0 .639C20.577 16.49 16.64 19.5 12 19.5c-4.638 0-8.573-3.007-9.963-7.178Z" />
+                                    <path stroke-linecap="round" stroke-linejoin="round"
+                                        d="M15 12a3 3 0 1 1-6 0 3 3 0 0 1 6 0Z" />
+                                </svg>
+
+                            </button>
+                            <button v-on:click="handleDeletePolygin(polygon.id)"
+                                class="border px-1 py-1 rounded-md text-red-500 border-red-500 hover:bg-red-500 hover:stroke-white">
+                                <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor"
+                                    class="w-4 h-4 fill-red-400">
+                                    <path fill-rule="evenodd"
+                                        d="M2.515 10.674a1.875 1.875 0 0 0 0 2.652L8.89 19.7c.352.351.829.549 1.326.549H19.5a3 3 0 0 0 3-3V6.75a3 3 0 0 0-3-3h-9.284c-.497 0-.974.198-1.326.55l-6.375 6.374ZM12.53 9.22a.75.75 0 1 0-1.06 1.06L13.19 12l-1.72 1.72a.75.75 0 1 0 1.06 1.06l1.72-1.72 1.72 1.72a.75.75 0 1 0 1.06-1.06L15.31 12l1.72-1.72a.75.75 0 1 0-1.06-1.06l-1.72 1.72-1.72-1.72Z"
+                                        clip-rule="evenodd" />
+                                </svg>
+                            </button>
+                        </div>
+                    </div>
+                </div>
+
             </div>
         </div>
         <div v-if="showAdd" class="text-cyan-700 italic p-2">
@@ -26,19 +55,13 @@
 import { Loader } from "@googlemaps/js-api-loader"
 import { onMounted, ref, watch } from "vue";
 import AddNewLocation from "../components/AddNewLocation.vue";
+import { collection, deleteDoc, doc, onSnapshot, orderBy, query, setDoc } from "firebase/firestore";
+import { db } from "../firebase/firebase";
+import { myLatLong } from "../store/store";
 const showAdd = ref(false);
-type latlng = {
-    lat: number;
-    lng: number;
-}
-const curClickedCords = ref<latlng | undefined>(
-)
-const myLatLong = ref({
-    lat: -34.397,
-    lng: 150.644
-})
-const polygonCordinates = ref<latlng[]>()
-
+const currentZoomLevel = ref(8);
+const polygons = ref<any>([]);
+const selectedPolygon = ref<any>({})
 let map: google.maps.Map
 let marker: google.maps.marker.AdvancedMarkerElement
 let polygon: google.maps.Polygon
@@ -60,12 +83,18 @@ loader.importLibrary("maps").then(async () => {
         position: myLatLong.value,
     });
     infoWindow.open(map);
+    polygon = new google.maps.Polygon({
+        strokeColor: "#FF0000",
+        strokeOpacity: 0.8,
+        strokeWeight: 2,
+        fillColor: "#FF0000",
+        fillOpacity: 0.35,
+        paths: [],
+    });
+    polygon.setMap(map);
     map.addListener("click", (mapsMouseEvent: any) => {
         infoWindow.close();
-        curClickedCords.value = {
-            lat: mapsMouseEvent?.latLng?.lat() as number,
-            lng: mapsMouseEvent?.latLng?.lng() as number
-        }
+
         infoWindow = new google.maps.InfoWindow({
             position: mapsMouseEvent.latLng,
         });
@@ -73,43 +102,87 @@ loader.importLibrary("maps").then(async () => {
             JSON.stringify(mapsMouseEvent.latLng.toJSON(), null, 2)
         );
         infoWindow.open(map);
+        if (showAdd.value) {
+            //which means we can now plot the polygon 
+            handleDisplayPolygon(mapsMouseEvent)
+        }
+    })
+    google.maps.event.addListenerOnce(map, "idle", function () {
+        map.setCenter(myLatLong.value)
+    })
+    map.addListener('zoom_changed', () => {
+        currentZoomLevel.value = map.getZoom() as number;
     })
     marker = new AdvancedMarkerElement({
         map: map,
         position: myLatLong.value
     })
 
-    polygon = new google.maps.Polygon({
-        strokeColor: "#FF0000",
-        strokeOpacity: 0.8,
-        strokeWeight: 2,
-        fillColor: "#FF0000",
-        fillOpacity: 0.35,
-    });
 
-    polygon.setMap(map);
 });
 
+function toggleAddPolygon() {
+    if (!showAdd.value) {
+        polygon.setPath([])
+        showAdd.value = !showAdd.value;
+    }
+    else {
+        showAdd.value = !showAdd.value;
+
+    }
+}
+
+function handleDisplayPolygon(event: google.maps.MapMouseEvent) {
+    //initially the polygon remains undefined 
+
+    const path = polygon.getPath();
+    if (path == undefined) {
+        //do something
+        polygon.setPath([event.latLng as google.maps.LatLng])
+    }
+    else {
+        path.push(event.latLng as google.maps.LatLng)
+    }
+}
+
 function handleCancel() {
-    console.log('working')
-    showAdd.value = !showAdd.value
+    showAdd.value = !showAdd.value;
+    polygon.setPaths([]);
 }
 
 onMounted(() => {
+    const q = query(collection(db, 'polygons'), orderBy('timestamps', 'desc'))
+    onSnapshot(q, (querySnapshot) => {
+        let polygons_: any = [];
+        querySnapshot.forEach((doc) => {
+            polygons_.push({
+                name: doc.data()?.name,
+                coordinates: doc.data()?.coordinates,
+                id: doc.data()?.id,
+                timestamps: doc.data()?.timestamps,
+                zoom: doc.data()?.zoom
+            });
+
+        });
+        polygons.value = polygons_
+    })
     navigator.permissions.query({ name: 'geolocation' }).then((result) => {
         switch (result.state) {
             case 'granted':
                 navigator.geolocation.getCurrentPosition((location) => {
-                    console.log('hello')
                     myLatLong.value = {
                         lat: location.coords.latitude,
                         lng: location.coords.longitude
                     }
+
                 })
                 break;
             case 'prompt':
                 navigator.geolocation.getCurrentPosition((location) => {
-                    console.log(location)
+                    myLatLong.value = {
+                        lat: location.coords.latitude,
+                        lng: location.coords.longitude
+                    }
                 })
                 break;
             case 'denied':
@@ -121,35 +194,66 @@ onMounted(() => {
     })
 })
 
-
 watch(myLatLong, () => {
     if (!map) return;
     map.setCenter(myLatLong.value)
     marker.position = myLatLong.value
 })
 
-watch(
-    curClickedCords, () => {
-        if (showAdd.value) {
-            if (curClickedCords.value) {
-                if (polygonCordinates.value && polygonCordinates.value.length > 0) {
-                    polygonCordinates.value = [...polygonCordinates.value, curClickedCords.value]
-                }
-                else {
-                    polygonCordinates.value = [curClickedCords.value]
-                }
-            }
-        }
 
-    }
-)
 
-watch(polygonCordinates, () => {
-    if (showAdd.value) {
-        console.log(polygonCordinates.value)
-        polygon.setPaths(polygonCordinates.value as google.maps.LatLngLiteral[])
+
+watch(selectedPolygon, () => {
+    if (selectedPolygon.value?.coordinates) {
+        const anyCordinate = selectedPolygon.value?.coordinates[0]
+        map.setCenter(anyCordinate);
+        polygon.setPaths(selectedPolygon.value?.coordinates);
+        map.setZoom(selectedPolygon.value?.zoom)
     }
 })
+
+
+
+async function handleSavePolygon(polygon_name: string) {
+    if (!showAdd.value) return;
+    if (!polygon_name) return alert('Please set a polygon name!');
+    if (polygon?.getPath() && polygon?.getPath()?.getLength() <= 3) return alert('Please select atleast more than 3 points!!')
+    const polygon_id = crypto.randomUUID();
+    const docRef = doc(db, 'polygons', polygon_id)
+    try {
+        const currentPoints = polygon?.getPath()?.getArray().map(p => ({
+            lat: p.lat(),
+            lng: p.lng()
+        }))
+        console.log(polygon.getPath());
+        await setDoc(docRef, {
+            name: polygon_name,
+            coordinates: currentPoints,
+            id: polygon_id,
+            timestamps: new Date(),
+            zoom: currentZoomLevel.value
+        })
+        alert('Polygon saved successfully!');
+        showAdd.value = !showAdd.value;
+    } catch (error) {
+        console.log(error);
+        alert('Something went wrong!')
+    }
+
+}
+
+
+async function handleDeletePolygin(id: string) {
+    if (!window.confirm('Are you sure?')) return;
+    try {
+        await deleteDoc(doc(db, 'polygons', id))
+        alert('Polygon deleted successfully!');
+
+    } catch (error) {
+        console.log(error)
+        alert('Something went wrong!')
+    }
+}
 
 
 </script>

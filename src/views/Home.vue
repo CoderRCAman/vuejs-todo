@@ -3,7 +3,6 @@
         <div class="container px-2 mx-auto ">
             <AddTodo />
             <div class="space-y-2" v-for="(todo, index) in Todos" :key="index">
-                {{ console.log(todo) }}
                 <TodoItem :title="todo.title" :user-id="todo.user_id" :id="todo.id" :completed="todo.completed"
                     :user-name="todo.userName" />
             </div>
@@ -25,7 +24,6 @@ import { ref } from 'vue';
 import AddTodo from '../components/AddTodo.vue';
 import TodoItem from '../components/TodoItem.vue'
 import { Todos, CompletedTodos } from '../store/store';
-console.log(Todos.value)
 </script>
 
 <style lang="scss" scoped></style>
