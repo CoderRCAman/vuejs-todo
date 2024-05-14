@@ -27,7 +27,6 @@ const props = defineProps({
     }
 })
 // const { handleCancelEdit, handleSavePolygon } = props; 
-console.log(props.name)  
 name.value = props.name
 </script>
 

@@ -33,7 +33,7 @@
                                 </svg>
 
                             </button>
-                            <button v-on:click="showEdit = !showEdit; selectedPolygon = polygon"
+                            <button v-on:click="handleToggleEdit(polygon)"
                                 class="border px-1 py-1 rounded-md text-emarald-500 border-emerald-500 group hover:bg-emerald-500 hover:text-white">
 
                                 <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24"
@@ -208,7 +208,7 @@ watch(myLatLong, () => {
 
 watch(selectedPolygon, () => {
     if (showEdit.value) {
-        handleShowEditPolygon(selectedPolygon.value)
+        return;
     }
     else if (selectedPolygon.value?.coordinates) {
         const anyCordinate = selectedPolygon.value?.coordinates[0]
@@ -313,6 +313,12 @@ function handleShowEditPolygon(p: any) {
     polygon.setDraggable(true);
     map.setCenter(oneOfCoordinates);
     map.setZoom(zoom)
+}
+function handleToggleEdit(polygon: any[]) {
+    showAdd.value = showAdd.value ? !showAdd.value : showAdd.value;
+    showEdit.value = !showEdit.value;
+    selectedPolygon.value = polygon;
+    handleShowEditPolygon(polygon);
 }
 
 </script>
