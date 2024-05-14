@@ -69,7 +69,7 @@
 import { Loader } from "@googlemaps/js-api-loader"
 import { onMounted, ref, watch } from "vue";
 import AddNewLocation from "../components/AddNewLocation.vue";
-import { collection, deleteDoc, doc, getDoc, getDocs, onSnapshot, orderBy, query, setDoc, where } from "firebase/firestore";
+import { collection, deleteDoc, doc, getDocs, onSnapshot, orderBy, query, setDoc, where } from "firebase/firestore";
 import { db } from "../firebase/firebase";
 import { myLatLong } from "../store/store";
 import EditLocation from "../components/EditLocation.vue";
