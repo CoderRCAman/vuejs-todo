@@ -81,7 +81,7 @@
 
 <script setup lang="ts">
 import { Loader } from "@googlemaps/js-api-loader"
-import { onMounted, ref, toRaw, watch } from "vue";
+import { onBeforeMount, onMounted, ref, toRaw, watch } from "vue";
 import AddNewLocation from "../components/AddNewLocation.vue";
 import { collection, deleteDoc, doc, getDocs, onSnapshot, orderBy, query, setDoc, where } from "firebase/firestore";
 import { db } from "../firebase/firebase";
@@ -97,6 +97,7 @@ const polygonBeforeEdit = ref<any>()
 const showAll = ref(true)
 const allPolygons = ref<google.maps.Polygon[]>([]);
 const editPolygon = ref<google.maps.Polygon>();
+const loading = ref(false)
 let map: google.maps.Map
 let marker: google.maps.marker.AdvancedMarkerElement
 let specificPolyogon: google.maps.Polygon
@@ -104,43 +105,46 @@ const loader = new Loader({
     apiKey: "AIzaSyBNKvbePmg8mvhEKKLa5M8vrlSrlAlYAW4",
     version: "weekly",
 });
-loader.importLibrary("maps").then(async () => {
-    const { Map } = await google.maps.importLibrary("maps") as google.maps.MapsLibrary;
-    const { AdvancedMarkerElement } = await google.maps.importLibrary("marker") as google.maps.MarkerLibrary;
-    map = new Map(document.getElementById("map") as HTMLElement, {
-        center: myLatLong.value,
-        zoom: 8,
-        mapId: 'b7a9841aa08c5884+'
+onBeforeMount(() => {
+    loading.value = true;
+    loader.importLibrary("maps").then(async () => {
+
+        const { Map } = await google.maps.importLibrary("maps") as google.maps.MapsLibrary;
+        const { AdvancedMarkerElement } = await google.maps.importLibrary("marker") as google.maps.MarkerLibrary;
+        loading.value = false;
+        map = new Map(document.getElementById("map") as HTMLElement, {
+            center: myLatLong.value,
+            zoom: 8,
+            mapId: 'b7a9841aa08c5884+'
+        });
+
+        specificPolyogon = new google.maps.Polygon({
+            strokeColor: "#FF0000",
+            strokeOpacity: 0.8,
+            strokeWeight: 2,
+            fillColor: "#FF0000",
+            fillOpacity: 0.35,
+        })
+
+        specificPolyogon.setMap(map);
+        map.addListener("click", (mapsMouseEvent: any) => {
+            if (showAdd.value) {
+                //which means we can now plot the polygon 
+                handleDisplayPolygon(mapsMouseEvent)
+            }
+        })
+        google.maps.event.addListenerOnce(map, "idle", function () {
+            map.setCenter(myLatLong.value)
+        })
+        map.addListener('zoom_changed', () => {
+            currentZoomLevel.value = map.getZoom() as number;
+        })
+        marker = new AdvancedMarkerElement({
+            map: map,
+            position: myLatLong.value
+        })
     });
-
-    specificPolyogon = new google.maps.Polygon({
-        strokeColor: "#FF0000",
-        strokeOpacity: 0.8,
-        strokeWeight: 2,
-        fillColor: "#FF0000",
-        fillOpacity: 0.35,
-    })
-
-    specificPolyogon.setMap(map);
-    map.addListener("click", (mapsMouseEvent: any) => {
-        if (showAdd.value) {
-            //which means we can now plot the polygon 
-            handleDisplayPolygon(mapsMouseEvent)
-        }
-    })
-    google.maps.event.addListenerOnce(map, "idle", function () {
-        map.setCenter(myLatLong.value)
-    })
-    map.addListener('zoom_changed', () => {
-        currentZoomLevel.value = map.getZoom() as number;
-    })
-    marker = new AdvancedMarkerElement({
-        map: map,
-        position: myLatLong.value
-    })
-
-
-});
+})
 
 function toggleAddPolygon() {
     if (!showAdd.value) {
@@ -175,48 +179,52 @@ function handleCancel() {
     specificPolyogon.setDraggable(false);
 }
 
-console.log(myLatLong)
+watch(loading, () => {
+    if (!loading.value) {
+        const q = query(collection(db, 'polygons'), orderBy('timestamps', 'desc'))
+        onSnapshot(q, (querySnapshot) => {
+            let polygons_: any = [];
+            querySnapshot.forEach((doc) => {
+                polygons_.push({
+                    name: doc.data()?.name,
+                    coordinates: doc.data()?.coordinates,
+                    id: doc.data()?.id,
+                    timestamps: doc.data()?.timestamps,
+                    zoom: doc.data()?.zoom,
+                    zone_color: doc.data()?.zone_color
+                });
+            });
+            //check if something was deleted!  
+            const deletedPolygons = allPolygons.value.filter(p => !polygons_.some((p_: any) => p_.id == p.get('id')))
+            deletedPolygons.forEach(dp => toRaw(dp)?.setMap(null))
+            console.log(allPolygons.value)
+            //below checks if there was anything new added!
+            allPolygons.value = polygons_.map((p: any) => {
+                const foundP = allPolygons.value.find((p_: google.maps.Polygon) =>
+                    p_.get('id') === p.id
+                )
+                if (foundP) {
+                    return foundP
+                }
+                const polygon = new google.maps.Polygon({
+                    paths: p.coordinates,
+                    strokeColor: p.zone_color,
+                    strokeWeight: 2,
+                    fillColor: p.zone_color,
+                    fillOpacity: 0.35,
+                    map: map
+                })
+                polygon.set('id', p.id)
+                return polygon
+            })
+            specificPolyogon.setPath([]);
+            polygons.value = polygons_
+        })
+    }
+})
+
 
 onMounted(() => {
-    const q = query(collection(db, 'polygons'), orderBy('timestamps', 'desc'))
-    onSnapshot(q, (querySnapshot) => {
-        let polygons_: any = [];
-        querySnapshot.forEach((doc) => {
-            polygons_.push({
-                name: doc.data()?.name,
-                coordinates: doc.data()?.coordinates,
-                id: doc.data()?.id,
-                timestamps: doc.data()?.timestamps,
-                zoom: doc.data()?.zoom,
-                zone_color: doc.data()?.zone_color
-            });
-        });
-        //check if something was deleted!  
-        const deletedPolygons = allPolygons.value.filter(p => !polygons_.some((p_: any) => p_.id == p.get('id')))
-        deletedPolygons.forEach(dp => toRaw(dp)?.setMap(null))
-        console.log(allPolygons.value)
-        //below checks if there was anything new added!
-        allPolygons.value = polygons_.map((p: any) => {
-            const foundP = allPolygons.value.find((p_: google.maps.Polygon) =>
-                p_.get('id') === p.id
-            )
-            if (foundP) {
-                return foundP
-            }
-            const polygon = new google.maps.Polygon({
-                paths: p.coordinates,
-                strokeColor: p.zone_color,
-                strokeWeight: 2,
-                fillColor: p.zone_color,
-                fillOpacity: 0.35,
-                map: map
-            })
-            polygon.set('id', p.id)
-            return polygon
-        })
-        specificPolyogon.setPath([]);
-        polygons.value = polygons_
-    })
     navigator.permissions.query({ name: 'geolocation' }).then((result) => {
         switch (result.state) {
             case 'granted':
