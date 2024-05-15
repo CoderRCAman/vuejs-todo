@@ -9,6 +9,18 @@
                 hover:bg-emerald-500 hover:text-white transition-colors duration-300 ease-in
                 ">Add a new location</button>
                 </div>
+                <div v-if="!showAll">
+                    <button v-on:click="showAll = !showAll" class="border rounded-md px-7 w-full py-2 font-semibold text-indigo-500 border-indigo-500
+                hover:bg-indigo-500 hover:text-white transition-colors duration-300 ease-in
+                ">Show all zones</button>
+                </div>
+                <div v-else>
+                    <button v-on:click="showAll = !showAll" class="border rounded-md px-7 w-full py-2 font-semibold 
+                bg-indigo-500 text-white transition-colors duration-300 ease-in
+                ">Hide</button>
+                </div>
+
+
                 <div v-if="showAdd">
                     <AddNewLocation :handle-cancel="handleCancel" :handle-save-polygon="handleSavePolygon" />
                 </div>
@@ -22,7 +34,8 @@
                         v-bind:class="(selectedPolygon?.id == polygon?.id ? 'bg-gray-100' : '') + ' flex items-center justify-between p-1 rounded-md  border'">
                         <h1 class="capitalize">{{ polygon.name }}</h1>
                         <div class="flex items-center gap-1">
-                            <button v-on:click="selectedPolygon = polygon;"
+
+                            <button v-on:click="handleViewPolygon(polygon)"
                                 class="border px-1 py-1 rounded-md text-sky-500 border-sky-500 hover:bg-sky-500 hover:text-white">
                                 <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24"
                                     stroke-width="1.5" stroke="currentColor" class="w-4 h-4">
@@ -68,22 +81,25 @@
 
 <script setup lang="ts">
 import { Loader } from "@googlemaps/js-api-loader"
-import { onMounted, ref, watch } from "vue";
+import { onMounted, ref, toRaw, watch } from "vue";
 import AddNewLocation from "../components/AddNewLocation.vue";
 import { collection, deleteDoc, doc, getDocs, onSnapshot, orderBy, query, setDoc, where } from "firebase/firestore";
 import { db } from "../firebase/firebase";
 import { myLatLong } from "../store/store";
 import EditLocation from "../components/EditLocation.vue";
-import { isSameCordinatesArray } from "../utils";
+import { getRandomColor, ifPolygonsIntersect, isSameCordinatesArray } from "../utils";
 const showAdd = ref(false);
 const showEdit = ref(false);
 const currentZoomLevel = ref(8);
-const polygons = ref<any>([]);
+const polygons = ref<any[]>([]);
 const selectedPolygon = ref<any>()
 const polygonBeforeEdit = ref<any>()
+const showAll = ref(true)
+const allPolygons = ref<google.maps.Polygon[]>([]);
+const editPolygon = ref<google.maps.Polygon>();
 let map: google.maps.Map
 let marker: google.maps.marker.AdvancedMarkerElement
-let polygon: google.maps.Polygon
+let specificPolyogon: google.maps.Polygon
 const loader = new Loader({
     apiKey: "AIzaSyBNKvbePmg8mvhEKKLa5M8vrlSrlAlYAW4",
     version: "weekly",
@@ -97,15 +113,15 @@ loader.importLibrary("maps").then(async () => {
         mapId: 'b7a9841aa08c5884+'
     });
 
-    polygon = new google.maps.Polygon({
+    specificPolyogon = new google.maps.Polygon({
         strokeColor: "#FF0000",
         strokeOpacity: 0.8,
         strokeWeight: 2,
         fillColor: "#FF0000",
         fillOpacity: 0.35,
-        paths: [],
-    });
-    polygon.setMap(map);
+    })
+
+    specificPolyogon.setMap(map);
     map.addListener("click", (mapsMouseEvent: any) => {
         if (showAdd.value) {
             //which means we can now plot the polygon 
@@ -128,21 +144,24 @@ loader.importLibrary("maps").then(async () => {
 
 function toggleAddPolygon() {
     if (!showAdd.value) {
-        polygon.setPath([])
+        specificPolyogon.setPath([])
+        specificPolyogon.setEditable(true);
+        specificPolyogon.setDraggable(true);
         showAdd.value = !showAdd.value;
     }
     else {
         showAdd.value = !showAdd.value;
-
+        specificPolyogon.setEditable(false);
+        specificPolyogon.setDraggable(false);
     }
 }
 
 function handleDisplayPolygon(event: google.maps.MapMouseEvent) {
     //initially the polygon remains undefined 
-    const path = polygon.getPath();
+    const path = specificPolyogon.getPath();
     if (path == undefined) {
         //do something
-        polygon.setPath([event.latLng as google.maps.LatLng])
+        specificPolyogon.setPath([event.latLng as google.maps.LatLng])
     }
     else {
         path.push(event.latLng as google.maps.LatLng)
@@ -151,24 +170,51 @@ function handleDisplayPolygon(event: google.maps.MapMouseEvent) {
 
 function handleCancel() {
     showAdd.value = !showAdd.value;
-    polygon.setPaths([]);
+    specificPolyogon.setPaths([]);
+    specificPolyogon.setEditable(false);
+    specificPolyogon.setDraggable(false);
 }
+
+console.log(myLatLong)
 
 onMounted(() => {
     const q = query(collection(db, 'polygons'), orderBy('timestamps', 'desc'))
     onSnapshot(q, (querySnapshot) => {
         let polygons_: any = [];
         querySnapshot.forEach((doc) => {
-            console.log(doc.data())
             polygons_.push({
                 name: doc.data()?.name,
                 coordinates: doc.data()?.coordinates,
                 id: doc.data()?.id,
                 timestamps: doc.data()?.timestamps,
-                zoom: doc.data()?.zoom
+                zoom: doc.data()?.zoom,
+                zone_color: doc.data()?.zone_color
             });
-
         });
+        //check if something was deleted!  
+        const deletedPolygons = allPolygons.value.filter(p => !polygons_.some((p_: any) => p_.id == p.get('id')))
+        deletedPolygons.forEach(dp => toRaw(dp)?.setMap(null))
+        console.log(allPolygons.value)
+        //below checks if there was anything new added!
+        allPolygons.value = polygons_.map((p: any) => {
+            const foundP = allPolygons.value.find((p_: google.maps.Polygon) =>
+                p_.get('id') === p.id
+            )
+            if (foundP) {
+                return foundP
+            }
+            const polygon = new google.maps.Polygon({
+                paths: p.coordinates,
+                strokeColor: p.zone_color,
+                strokeWeight: 2,
+                fillColor: p.zone_color,
+                fillOpacity: 0.35,
+                map: map
+            })
+            polygon.set('id', p.id)
+            return polygon
+        })
+        specificPolyogon.setPath([]);
         polygons.value = polygons_
     })
     navigator.permissions.query({ name: 'geolocation' }).then((result) => {
@@ -206,24 +252,33 @@ watch(myLatLong, () => {
 })
 
 
-watch(selectedPolygon, () => {
-    if (showEdit.value) {
-        return;
+watch(showAll, () => {
+    console.log('this is')
+    if (showAll.value) {
+        allPolygons.value.forEach(p => toRaw(p).setMap(map))
+    } else {
+        allPolygons.value.forEach(p => {
+            if (showEdit.value && p.get('id') == selectedPolygon.value?.id) return;
+            toRaw(p).setMap(null)
+
+        })
+        if (!showEdit.value) {
+            selectedPolygon.value = null
+        }
     }
-    else if (selectedPolygon.value?.coordinates) {
-        const anyCordinate = selectedPolygon.value?.coordinates[0]
-        map.setCenter(anyCordinate);
-        polygon.setPaths(selectedPolygon.value?.coordinates);
-        map.setZoom(selectedPolygon.value?.zoom)
-    }
+
 })
+
+
 
 
 
 async function handleSavePolygon(polygon_name: string) {
     if (!showAdd.value && !showEdit.value) return;
     if (!polygon_name) return alert('Please set a polygon name!');
-    if (polygon?.getPath() && polygon?.getPath()?.getLength() <= 3) return alert('Please select atleast 3 points!!')
+    if (!showEdit.value) {
+        if (specificPolyogon?.getPath() && specificPolyogon?.getPath()?.getLength() <= 3) return alert('Please select more than 3 points!!')
+    }
     const polygon_id = crypto.randomUUID();
     const q = query(collection(db, 'polygons'), where('name', '==', polygon_name));
     try {
@@ -234,17 +289,19 @@ async function handleSavePolygon(polygon_name: string) {
             if (docs.size) {
                 return alert('This name already exist!')
             }
-            const currentPoints = polygon?.getPath()?.getArray().map(p => ({
+            const currentPoints = specificPolyogon?.getPath()?.getArray().map(p => ({
                 lat: p.lat(),
                 lng: p.lng()
             }))
-            console.log(polygon.getPath());
+            console.log(specificPolyogon.getPath());
+            if (allPolygons.value.some(poly => ifPolygonsIntersect(specificPolyogon, poly))) return alert('Zones are overlaping!');
             await setDoc(docRef, {
                 name: polygon_name.toLowerCase(),
                 coordinates: currentPoints,
                 id: polygon_id,
                 timestamps: new Date(),
-                zoom: currentZoomLevel.value
+                zoom: currentZoomLevel.value,
+                zone_color: getRandomColor(),
             })
             alert('Polygon saved successfully!');
             showAdd.value = !showAdd.value
@@ -252,21 +309,27 @@ async function handleSavePolygon(polygon_name: string) {
 
         if (showEdit.value) {
             const docRef = doc(db, 'polygons', selectedPolygon.value?.id)
-            const currentPoints = polygon?.getPath()?.getArray().map(p => ({
+            let currentPoints: {
+                lat: number,
+                lng: number
+            }[] | undefined = [];
+            currentPoints = editPolygon.value?.getPath()?.getArray().map(p => ({
                 lat: p.lat(),
                 lng: p.lng()
             }))
-            console.log(polygon.getPath());
+            if (allPolygons.value.some(poly => poly.get('id') != selectedPolygon.value?.id && ifPolygonsIntersect(toRaw(editPolygon.value) as google.maps.Polygon, toRaw(poly)))) return alert('Zones are overlaping!');
+
             await setDoc(docRef, {
                 name: polygon_name.toLowerCase(),
                 coordinates: currentPoints,
                 id: selectedPolygon.value?.id,
                 timestamps: new Date(),
-                zoom: currentZoomLevel.value
+                zoom: currentZoomLevel.value,
+                zone_color: selectedPolygon.value.zone_color
             })
             alert('Polygon saved successfully!');
-            polygon.setDraggable(false);
-            polygon.setEditable(false);
+            editPolygon.value?.setDraggable(false);
+            editPolygon.value?.setEditable(false);
             showEdit.value = !showEdit.value
         }
     } catch (error) {
@@ -280,14 +343,14 @@ async function handleDeletePolygin(id: string) {
     if (!window.confirm('Are you sure?')) return;
     try {
         const toDeletePolygon: any[] = polygons.value.find((p: any) => p.id === id)?.coordinates
-        const currentPoints = polygon?.getPath()?.getArray().map(p => ({
+        const currentPoints = specificPolyogon?.getPath()?.getArray().map(p => ({
             lat: p.lat(),
             lng: p.lng()
         }))
 
         await deleteDoc(doc(db, 'polygons', id))
         if (currentPoints && isSameCordinatesArray(toDeletePolygon, currentPoints)) {
-            polygon.setPath([]);
+            specificPolyogon.setPath([]);
         }
         alert('Polygon deleted successfully!');
 
@@ -298,27 +361,37 @@ async function handleDeletePolygin(id: string) {
 }
 function handleCancelEdit() {
     showEdit.value = !showEdit.value
-    polygon.setEditable(false);
-    polygon.setDraggable(false);
-    console.log(polygonBeforeEdit.value)
-    polygon.setPath(polygonBeforeEdit.value || [])
+    specificPolyogon.setEditable(false);
+    specificPolyogon.setDraggable(false);
+    editPolygon.value?.setDraggable(false);
+    editPolygon.value?.setEditable(false);
+    editPolygon.value?.setPath(polygonBeforeEdit.value)
 }
 
-function handleShowEditPolygon(p: any) {
-    const oneOfCoordinates = p?.coordinates[0];
-    const zoom = p?.zoom;
-    polygonBeforeEdit.value = p?.coordinates
-    polygon.setPath(p?.coordinates || []);
-    polygon.setEditable(true);
-    polygon.setDraggable(true);
-    map.setCenter(oneOfCoordinates);
-    map.setZoom(zoom)
-}
-function handleToggleEdit(polygon: any[]) {
+
+function handleToggleEdit(polygon: any) {
     showAdd.value = showAdd.value ? !showAdd.value : showAdd.value;
     showEdit.value = !showEdit.value;
     selectedPolygon.value = polygon;
-    handleShowEditPolygon(polygon);
+    polygonBeforeEdit.value = polygon?.coordinates
+    const oneOfCoordinates = polygon?.coordinates[0];
+    const zoom = polygon?.zoom;
+    map.setCenter(oneOfCoordinates);
+    map.setZoom(zoom)
+    editPolygon.value = allPolygons.value.find(p => p.get('id') == polygon.id);
+    editPolygon.value?.setDraggable(true);
+    editPolygon.value?.setEditable(true);
+
+}
+function handleViewPolygon(polygon: any) {
+    selectedPolygon.value = polygon
+    const oneOfCoordinates = polygon?.coordinates[0];
+    map.setCenter(oneOfCoordinates);
+    map.setZoom(polygon?.zoom);
+    if (showAll.value) return;
+    toRaw(editPolygon.value)?.setMap(null)
+    editPolygon.value = allPolygons.value.find(p => p.get('id') == polygon.id);
+    toRaw(editPolygon.value)?.setMap(map)
 }
 
 </script>
