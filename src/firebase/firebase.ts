@@ -1,14 +1,14 @@
-import { initializeApp } from "firebase/app";
-import { getFirestore } from "firebase/firestore";
+import { initializeApp } from 'firebase/app'
+import { getFirestore } from 'firebase/firestore'
 const firebaseConfig = {
-  apiKey: "AIzaSyCLPw8RX7z-hpvclyeKkT9L6rm2kCeRO6I",
-  authDomain: "vue-firebase-da7ae.firebaseapp.com",
-  projectId: "vue-firebase-da7ae",
-  storageBucket: "vue-firebase-da7ae.appspot.com",
-  messagingSenderId: "727913421602",
-  appId: "1:727913421602:web:9102dbd67cc9db88df237b",
-};
+  apiKey: import.meta.env.VITE_API_KEY,
+  authDomain: import.meta.env.VITE_AUTH_DOMAIN,
+  projectId: import.meta.env.VITE_PROJECT_ID,
+  storageBucket: import.meta.env.VITE_STORAGE_BUCKET,
+  messagingSenderId: import.meta.env.VITE_MESSAGING_SENDER_ID,
+  appId: import.meta.env.VITE_APP_Id
+}
 
-const app = initializeApp(firebaseConfig);
-const db = getFirestore(app);
-export { db };
+const app = initializeApp(firebaseConfig)
+const db = getFirestore(app)
+export { db }

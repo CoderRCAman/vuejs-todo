@@ -1,5 +1,5 @@
 <template>
-<div class="container mx-auto h-[6vh] flex items-center justify-between ">
+<div class="container mx-auto h-[6vh] flex items-center justify-between py-2 ">
         <RouterLink to='/'>
             <div class="text-xl font-semibold">Vue Js Todo app</div>
         </RouterLink>

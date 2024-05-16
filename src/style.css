@@ -1,7 +1,62 @@
 @tailwind base;
 @tailwind components;
-@tailwind utilities; 
+@tailwind utilities;
 
-#map{
-    height: 700px;
+#map {
+  height: 700px;
+}
+
+.add-new-btn {
+  border-radius: 0.375rem; /* rounded-md */
+  padding-left: 1.75rem; /* px-7 */
+  padding-right: 1.75rem; /* px-7 */
+  width: 100%; /* w-full */
+  padding-top: 0.5rem; /* py-2 */
+  padding-bottom: 0.5rem; /* py-2 */
+  font-weight: 600; /* font-semibold */
+  color: #10b981; /* text-emerald-500 */
+  border: 1px solid #10b981; /* border-emerald-500 */
+  transition-property: background-color, color; /* transition-colors */
+  transition-duration: 300ms; /* duration-300 */
+  transition-timing-function: ease-in; /* ease-in */
+}
+
+.add-new-btn:hover {
+  background-color: #10b981; /* hover:bg-emerald-500 */
+  color: #ffffff; /* hover:text-white */
+}
+
+.show-all-btn {
+  border-radius: 0.375rem; /* rounded-md */
+  padding-left: 1.75rem; /* px-7 */
+  padding-right: 1.75rem; /* px-7 */
+  width: 100%; /* w-full */
+  padding-top: 0.5rem; /* py-2 */
+  padding-bottom: 0.5rem; /* py-2 */
+  font-weight: 600; /* font-semibold */
+  color: #6366f1; /* text-indigo-500 */
+  border: 1px solid #6366f1; /* border-indigo-500 */
+  transition-property: background-color, color; /* transition-colors */
+  transition-duration: 300ms; /* duration-300 */
+  transition-timing-function: ease-in; /* ease-in */
+}
+
+.show-all-btn:hover {
+  background-color: #6366f1; /* hover:bg-indigo-500 */
+  color: #ffffff; /* hover:text-white */
+}
+
+.hide-all-btn {
+  border-radius: 0.375rem; /* rounded-md */
+  padding-left: 1.75rem; /* px-7 */
+  padding-right: 1.75rem; /* px-7 */
+  width: 100%; /* w-full */
+  padding-top: 0.5rem; /* py-2 */
+  padding-bottom: 0.5rem; /* py-2 */
+  font-weight: 600; /* font-semibold */
+  background-color: #6366f1; /* bg-indigo-500 */
+  color: #ffffff; /* text-white */
+  transition-property: background-color, color; /* transition-colors */
+  transition-duration: 300ms; /* duration-300 */
+  transition-timing-function: ease-in; /* ease-in */
 }

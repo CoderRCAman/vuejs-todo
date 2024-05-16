@@ -26,14 +26,14 @@ const props = defineProps({
         type: String,
         default: '100%',
     },
-    id : {
-        type:String
+    id: {
+        type: String
     },
-    completed:{
-        type:Boolean
+    completed: {
+        type: Boolean
     }
 })
-const { title , id , completed } = toRefs(props)
+const { title, id, completed } = toRefs(props)
 function handleRemoveBookmark() {
     if (!window.confirm('Are you sure?')) return;
     removeBookmark(id.value);

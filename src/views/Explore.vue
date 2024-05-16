@@ -5,19 +5,13 @@
             <div class="min-h-92 p-2 text-sm md:w-80 border rounded-md space-y-2">
                 <h1 class="font-semibold text-slate-700">Map polygons</h1>
                 <div v-if="!showAdd">
-                    <button v-on:click="toggleAddPolygon" class="border rounded-md px-7 w-full py-2 font-semibold text-emerald-500 border-emerald-500
-                hover:bg-emerald-500 hover:text-white transition-colors duration-300 ease-in
-                ">Add a new location</button>
+                    <button v-on:click="toggleAddPolygon" class="add-new-btn">Add a new location</button>
                 </div>
                 <div v-if="!showAll">
-                    <button v-on:click="showAll = !showAll" class="border rounded-md px-7 w-full py-2 font-semibold text-indigo-500 border-indigo-500
-                hover:bg-indigo-500 hover:text-white transition-colors duration-300 ease-in
-                ">Show all zones</button>
+                    <button v-on:click="showAll = !showAll" class="show-all-btn">Show all zones</button>
                 </div>
                 <div v-else>
-                    <button v-on:click="showAll = !showAll" class="border rounded-md px-7 w-full py-2 font-semibold 
-                bg-indigo-500 text-white transition-colors duration-300 ease-in
-                ">Hide</button>
+                    <button v-on:click="showAll = !showAll" class="hide-all-btn">Hide</button>
                 </div>
 
 
@@ -102,20 +96,19 @@ let map: google.maps.Map
 let marker: google.maps.marker.AdvancedMarkerElement
 let specificPolyogon: google.maps.Polygon
 const loader = new Loader({
-    apiKey: "AIzaSyBNKvbePmg8mvhEKKLa5M8vrlSrlAlYAW4",
+    apiKey: import.meta.env.VITE_MAP_API_KEY,
     version: "weekly",
 });
 onBeforeMount(() => {
-    loading.value = true;
+loading.value = true;
     loader.importLibrary("maps").then(async () => {
-
         const { Map } = await google.maps.importLibrary("maps") as google.maps.MapsLibrary;
         const { AdvancedMarkerElement } = await google.maps.importLibrary("marker") as google.maps.MarkerLibrary;
         loading.value = false;
         map = new Map(document.getElementById("map") as HTMLElement, {
             center: myLatLong.value,
             zoom: 8,
-            mapId: 'b7a9841aa08c5884+'
+            mapId: import.meta.env.VITE_MAP_ID
         });
 
         specificPolyogon = new google.maps.Polygon({
@@ -124,6 +117,7 @@ onBeforeMount(() => {
             strokeWeight: 2,
             fillColor: "#FF0000",
             fillOpacity: 0.35,
+
         })
 
         specificPolyogon.setMap(map);
@@ -197,7 +191,6 @@ watch(loading, () => {
             //check if something was deleted!  
             const deletedPolygons = allPolygons.value.filter(p => !polygons_.some((p_: any) => p_.id == p.get('id')))
             deletedPolygons.forEach(dp => toRaw(dp)?.setMap(null))
-            console.log(allPolygons.value)
             //below checks if there was anything new added!
             allPolygons.value = polygons_.map((p: any) => {
                 const foundP = allPolygons.value.find((p_: google.maps.Polygon) =>
@@ -212,9 +205,11 @@ watch(loading, () => {
                     strokeWeight: 2,
                     fillColor: p.zone_color,
                     fillOpacity: 0.35,
-                    map: map
+                    map: map,
+                    geodesic: true,
                 })
-                polygon.set('id', p.id)
+                polygon.set('id', p.id);
+                polygon.set('content', p.name)
                 return polygon
             })
             specificPolyogon.setPath([]);
@@ -261,14 +256,12 @@ watch(myLatLong, () => {
 
 
 watch(showAll, () => {
-    console.log('this is')
     if (showAll.value) {
         allPolygons.value.forEach(p => toRaw(p).setMap(map))
     } else {
         allPolygons.value.forEach(p => {
             if (showEdit.value && p.get('id') == selectedPolygon.value?.id) return;
             toRaw(p).setMap(null)
-
         })
         if (!showEdit.value) {
             selectedPolygon.value = null
@@ -276,8 +269,6 @@ watch(showAll, () => {
     }
 
 })
-
-
 
 
 
@@ -293,7 +284,6 @@ async function handleSavePolygon(polygon_name: string) {
         const docRef = doc(db, 'polygons', polygon_id)
         if (showAdd.value) {
             const docs = await getDocs(q);
-            console.log(docs.size);
             if (docs.size) {
                 return alert('This name already exist!')
             }
@@ -301,7 +291,6 @@ async function handleSavePolygon(polygon_name: string) {
                 lat: p.lat(),
                 lng: p.lng()
             }))
-            console.log(specificPolyogon.getPath());
             if (allPolygons.value.some(poly => ifPolygonsIntersect(specificPolyogon, poly))) return alert('Zones are overlaping!');
             await setDoc(docRef, {
                 name: polygon_name.toLowerCase(),
